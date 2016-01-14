@@ -10,21 +10,17 @@ def is_image(filename):
     return any([filename.endswith(e) for e in ext])
 
 def load(pos_dir, neg_dir):
-    dataset = []
+    images, labels = [], []
     files = listdir(pos_dir)
     for f in files:
         if not is_image(f):
             continue
-        dataset.append((data.imread(join(pos_dir, f)), 1))
+        images.append(data.imread(join(pos_dir, f)))
+        labels.append(1)
     files = listdir(neg_dir)
     for f in files:
         if not is_image(f):
             continue
-        dataset.append((data.imread(join(neg_dir, f)), 0))
-    return dataset
-    
-train_pos_dir, train_neg_dir = "train/pos", "train/neg"
-test_pos_dir, test_neg_dir = "test/pos", "test/neg"
-
-train = load(train_pos_dir, train_neg_dir)
-test = load(test_pos_dir, test_neg_dir)
+        images.append(data.imread(join(neg_dir, f)))
+        labels.append(0)
+    return images, labels
