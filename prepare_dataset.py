@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from os import listdir
-from os.path import join
+from os.path import join, splitext
 from skimage import data, io
 from random import randint
 
@@ -20,17 +20,20 @@ def is_image(filename):
     ext = [".jpg", ".png", ".gif"]
     return any([filename.endswith(e) for e in ext])
     
-def make_dataset(input_dir, output_dir, center='center'):
+def make_dataset(input_dir, output_dir, center='center', sample=1):
     files = listdir(input_dir)
     for f in files:
         if not is_image(f):
             continue
-        image = data.imread(join(input_dir, f))
-        io.imsave(join(output_dir, f), crop(image))
-        print "Saved " + f
+        for i in range(sample):
+            [file_name, extension] = splitext(f)
+            new_file_name = file_name + str(i) + extension
+            image = data.imread(join(input_dir, f))
+            io.imsave(join(output_dir, new_file_name), crop(image, center=center))
+            print "Saved " + new_file_name
         
-make_dataset("C:/Users/Antea/Downloads/INRIAPerson/train_64x128_H96/neg", "train/neg", center='random')
-make_dataset("C:/Users/Antea/Downloads/INRIAPerson/test_64x128_H96/neg", "test/neg", center='random')
+#make_dataset("/home/mfolnovic/dev/private/fer/rasuzo/INRIAPerson/train_64x128_H96/neg", "train2/neg", center='random', sample=10)
+#make_dataset("/home/mfolnovic/dev/private/fer/rasuzo/INRIAPerson/test_64x128_H96/neg", "test2/neg", center='random', sample=10)
 
-make_dataset("C:/Users/Antea/Downloads/INRIAPerson/train_64x128_H96/pos", "train/pos", center='center')
-make_dataset("C:/Users/Antea/Downloads/INRIAPerson/test_64x128_H96/pos", "test/pos", center='center')
+#make_dataset("/home/mfolnovic/dev/private/fer/rasuzo/INRIAPerson/train_64x128_H96/pos", "train2/pos", center='center')
+#make_dataset("/home/mfolnovic/dev/private/fer/rasuzo/INRIAPerson/test_64x128_H96/pos", "test2/pos", center='center')
