@@ -59,5 +59,5 @@ def parse_annotations(path):
         for line in f:
             m = re.match(r"Bounding box for [\"\w\d\s\(\),-]+: \((\d+),\s*(\d+)\)\s*-\s*\((\d+),\s*(\d+)\)", line)
             if m is not None:
-                result.append((m.group(1), m.group(2), m.group(3), m.group(4)))
+                result.append((int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4))))
     return result
