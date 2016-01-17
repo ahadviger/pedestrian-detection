@@ -55,7 +55,7 @@ class Model(object):
         y2 = annotations[:, 3]
 
         area = (x2 - x1 + 1) * (y2 - y1 + 1)
-        idxs = np.argsort(area)
+        idxs = np.argsort(y2)
 
         result = []
 

@@ -1,6 +1,6 @@
 import cPickle
 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import scipy
 
 from load import *
