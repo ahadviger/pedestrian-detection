@@ -16,13 +16,13 @@ def load(pos_dir, neg_dir):
     for f in files:
         if not is_image(f):
             continue
-        images.append(data.imread(join(pos_dir, f)))
+        images.append(data.imread(join(pos_dir, f))[:, :, :3])
         labels.append(1)
     files = listdir(neg_dir)
     for f in files:
         if not is_image(f):
             continue
-        images.append(data.imread(join(neg_dir, f)))
+        images.append(data.imread(join(neg_dir, f))[:, :, :3])
         labels.append(0)
     return images, labels
 
@@ -34,7 +34,7 @@ def load_inria(image_dir):
         if not is_image(image_file):
             continue
         image_path = join(image_dir, image_file)
-        images.append((image_file, data.imread(image_path)))
+        images.append((image_file, data.imread(image_path)[:, :, :3]))
 
     return images
 
@@ -48,7 +48,7 @@ def load_full(image_dir, annotations_dir):
         if not exists(annotation_file) or not is_image(image_file):
             continue
         image_path = join(image_dir, image_file)
-        images.append((image_path, data.imread(image_path)))
+        images.append((image_path, data.imread(image_path)[:, :, :3]))
         annotations.append(parse_annotations(annotation_file))
 
     return images, annotations

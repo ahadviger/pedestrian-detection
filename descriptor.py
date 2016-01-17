@@ -11,8 +11,13 @@ class ImageDescriptor(object):
 
     def extract_all(self, images, visualize=False, feature_vector=True):
         descriptors = []
+        counter = 0
         for image in images:
             descriptors.append(self.extract(image, visualize=visualize, feature_vector=feature_vector))
+
+            counter += 1
+            if counter % 100 == 0:
+                print str(counter) + "/" + str(len(images))
         return descriptors
 
 class HOG(ImageDescriptor):
@@ -27,18 +32,19 @@ class HOG(ImageDescriptor):
             cells_per_block=self.cells_per_block, visualise=visualize)
 
 class CSS(ImageDescriptor):
-    def __init__(self, bins=9, pixels_per_cell=(8, 8)):
+    def __init__(self, bins=10, pixels_per_cell=(8, 8)):
         self.bins = bins
         self.pixels_per_cell = pixels_per_cell
 
     def extract(self, image, visualize=False, feature_vector=True):
+        image = color.rgb2hsv(image)
         sy, sx, d = image.shape
         cx, cy = self.pixels_per_cell
 
         n_cellsx = int(np.floor(sx // cx))
         n_cellsy = int(np.floor(sy // cy))
 
-        cells = np.zeros((n_cellsy, n_cellsx, bins ** d))
+        cells = np.zeros((n_cellsy, n_cellsx, self.bins ** d))
         for y in range(n_cellsy):
             for x in range(n_cellsx):
                 cells[y, x, :] = self._hist(image[y*cy:(y+1)*cy, x*cx:(x+1)*cx, :])
@@ -91,15 +97,15 @@ class CSS(ImageDescriptor):
 
     def _hist(self, cell):
         sy, sx, d = cell.shape
-        step = 1.0 / bins
+        step = 1.0 / self.bins
 
-        result = np.zeros((bins * bins * bins))
+        result = np.zeros((self.bins * self.bins * self.bins))
         for y in range(sy):
             for x in range(sx):
                 bin_1 = min(int(cell[y, x, 0] / step), self.bins - 1)
                 bin_2 = min(int(cell[y, x, 1] / step), self.bins - 1)
                 bin_3 = min(int(cell[y, x, 2] / step), self.bins - 1)
-                result[bin_1 * bins * bins + bin_2 * bins + bin_3] += 1
+                result[bin_1 * self.bins * self.bins + bin_2 * self.bins + bin_3] += 1
 
         return result
 

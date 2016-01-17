@@ -1,7 +1,6 @@
 import cPickle
 
 import matplotlib.pyplot as plt
-import imutils
 
 from constants import *
 
@@ -82,7 +81,11 @@ class Model(object):
         return annotations[result]
 
     def detect(self, image):
-        image = imutils.resize(image, width=min(400, image.shape[1]))
+        im = Image.fromarray(image)
+        new_width = min(400, image.shape[1])
+        new_height = new_width * image.shape[0] / image.shape[1]
+        im = im.resize((new_width, new_height), Image.ANTIALIAS)
+        image = np.array(im)
 
         start = datetime.now()
 
@@ -106,9 +109,12 @@ class Model(object):
         return self.non_maximum_suppression(self.non_maximum_suppression(np.array(detected)))
     
     def train(self, images_train, labels_train, images_test, labels_test):
+        start = datetime.now()
         print "Extracting features..."
         descriptor_train = self.descriptor.extract_all(images_train)
         descriptor_test = self.descriptor.extract_all(images_test)
+        end = datetime.now()
+        print "Feature extraction time: " + str(end - start)
     
         print "Training SVM..."
         self.model = SVC()
