@@ -19,6 +19,7 @@ from descriptor import *
 descriptor = HOG()
 model = Model(descriptor)
 #model.prepare_initial()
+model.load('hog')
 model.prepare_hard_negative('hard_negative_1_')
 
 if False:

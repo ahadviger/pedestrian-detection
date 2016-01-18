@@ -1,23 +1,27 @@
-from css import *
+from descriptor import *
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-
+from datetime import datetime
 from skimage import data, color
 
-image = data.imread("crop001061.png")
+image = data.imread("/home/mfolnovic/dev/private/fer/rasuzo/pedestrian-detection/data/window/train/neg/no_person__no_bike_1409.png")
 
 #plt.imshow(image)
 #plt.show()
 
-image_hsv = color.rgb2hsv(image)
+#image_hsv = color.rgb2hsv(image)
 
-visualize = [13 * 34 + 14, 25 * 34 + 17, 39 * 34 + 16, 47 * 34 + 28]
-css_images = css(image_hsv, pixels_per_cell=(8, 8), visualize = visualize)
+css = CSS()
+visualize = None # [13 * 34 + 14, 25 * 34 + 17, 39 * 34 + 16, 47 * 34 + 28]
+start = datetime.now()
+css_images = css.extract(image) # , visualize = visualize
+end = datetime.now()
+print "Time: " + str(end-start)
 
 print(len(css_images))
 
-for i in range(len(css_images)):
-    print(i)
-    plt.imshow(css_images[i], cmap = cm.Greys_r)
-    plt.show()
+#for i in range(len(css_images)):
+#    print(i)
+#    plt.imshow(css_images[i], cmap = cm.Greys_r)
+#    plt.show()

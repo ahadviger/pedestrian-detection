@@ -6,7 +6,7 @@ from constants import *
 
 import scipy
 from os import makedirs
-from os.path import exists
+from os.path import join, splitext, exists, basename
 from load import *
 from skimage import data, io, color
 from skimage.transform import pyramid_gaussian, pyramid_expand
@@ -17,8 +17,8 @@ from PIL import Image, ImageDraw
 from prepare_dataset import *
 
 class Model(object):
-    def __init__(self, descriptor, max_layer=12, downscale=1.05,
-            window_size=(64, 128), step_size=8, threshold=0.65):
+    def __init__(self, descriptor, max_layer=6, downscale=1.1,
+            window_size=(64, 128), step_size=16, threshold=0.65):
         self.descriptor = descriptor
         self.max_layer = max_layer
         self.downscale = downscale
@@ -42,8 +42,11 @@ class Model(object):
                 yield (window, [x * scale, y * scale, (x + self.window_size[0]) * scale, (y + self.window_size[1]) * scale])
 
     def descriptor_sliding_windows(self, image):
-        for window, position in self.scaled_sliding_windows(image):
-            yield (position, window, self.descriptor.extract(window))
+        windows = list(self.scaled_sliding_windows(image))
+        all_features = self.descriptor.extract_all([window for window, position in windows])
+
+        for (window, position), features in zip(windows, all_features):
+            yield (position, window, features)
 
     def non_maximum_suppression(self, annotations):
         if len(annotations) == 0:
@@ -59,7 +62,6 @@ class Model(object):
 
         result = []
 
-        print(annotations[idxs])
         while len(idxs) > 0:
             last = len(idxs) - 1
             i = idxs[last]
@@ -73,7 +75,6 @@ class Model(object):
             w = np.maximum(0, xx2 - xx1 + 1)
             h = np.maximum(0, yy2 - yy1 + 1)
             overlap = w * h / area[idxs[:last]].astype(float)
-            print(overlap)
 
             idxs = np.delete(idxs,
                 np.concatenate(([last], np.where(overlap > self.threshold)[0])))
@@ -106,7 +107,7 @@ class Model(object):
         end = datetime.now()
         print "Feature prediction time: " + str(end - start)
 
-        return self.non_maximum_suppression(self.non_maximum_suppression(np.array(detected)))
+        return self.non_maximum_suppression(np.array(detected))
     
     def train(self, images_train, labels_train, images_test, labels_test):
         start = datetime.now()
@@ -124,30 +125,26 @@ class Model(object):
         print "Test score:", self.model.score(descriptor_test, labels_test)
 
     def prepare_hard_negative(self, prefix):
-        print "Loading dataset..."
-        images_train, labels_train = load(WINDOW_TRAIN_POS, WINDOW_TRAIN_NEG)
-        images_test, labels_test = load(WINDOW_TEST_POS, WINDOW_TRAIN_NEG)
-        
-        print "Initial training..."
-        self.train(images_train + images_test, labels_train + labels_test,
-                   images_train + images_test, labels_train + labels_test)
-
         print "Searching for hard negative..."
-        counter = 0
-        for name, image in load_inria(INRIA_TRAIN_NEG):
-            print "Processing: " + name
-            for position, window, features in descriptor_sliding_windows(image):
-                if self.model.predict([features])[0] == 1:
-                    scipy.misc.imsave(WINDOW_TRAIN_NEG + '/' + prefix + str(counter) + '.jpg', window)
-                    counter += 1
 
-        counter = 0
-        for image in load_inria(INRIA_TEST_NEG):
-            print "Processing: " + name
-            for position, window, features in descriptor_sliding_windows(image):
-                if self.model.predict([features])[0] == 1:
-                    scipy.misc.imsave(WINDOW_TEST_NEG + '/' + prefix + str(counter) + '.jpg', window)
-                    counter += 1
+        def process(inria_path, window_path):
+            images = load_inria(inria_path)
+            for i, (name, image) in enumerate(images):
+                print "Processing [{0}/{1}]: {2}".format(i, len(images), name)
+                data = list(self.descriptor_sliding_windows(image))
+                all_features = [features for position, window, features in data]
+                predictions = self.model.predict(all_features)
+
+                counter = 0
+                for (position, window, features), prediction in zip(data, predictions):
+                    if prediction == 1:
+                        new_file_name = WINDOW_TRAIN_NEG + '/' + prefix + splitext(name)[0] + '_' + str(counter) + '.jpg'
+                        scipy.misc.imsave(new_file_name, window)
+                        print(new_file_name)
+                        counter += 1
+
+        process(INRIA_TRAIN_NEG, WINDOW_TRAIN_NEG)
+        process(INRIA_TEST_NEG, WINDOW_TEST_NEG)
 
     def prepare_initial(self):
         for dir in [WINDOW_TRAIN_NEG, WINDOW_TEST_NEG, WINDOW_TRAIN_POS, WINDOW_TEST_POS]:

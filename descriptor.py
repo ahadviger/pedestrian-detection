@@ -4,21 +4,36 @@ from skimage import data, io, color
 from skimage.exposure import histogram
 from skimage.feature import hog
 from scipy.ndimage import zoom
+from scipy.spatial.distance import cdist
+from datetime import datetime
+from joblib import Parallel, delayed
+
+def helper(descriptor, image, visualize, feature_vector):
+    return descriptor.extract(image, visualize, feature_vector)
 
 class ImageDescriptor(object):
+    def feature_vector_size(self, image):
+        return self.extract(image).shape[0]
+
     def extract(self, image, visualize=False, feature_vector=True):
         raise NotImplementedError("Not implemented")
 
     def extract_all(self, images, visualize=False, feature_vector=True):
-        descriptors = []
-        counter = 0
-        for image in images:
-            descriptors.append(self.extract(image, visualize=visualize, feature_vector=feature_vector))
+        return Parallel(n_jobs=4)(delayed(helper)(self, image, visualize, feature_vector) for image in images)
+#        result = np.empty((len(images), self.feature_vector_size(images[0])))
 
-            counter += 1
-            if counter % 100 == 0:
-                print str(counter) + "/" + str(len(images))
-        return descriptors
+#        counter = 0
+#        start = datetime.now()
+#        for i, image in enumerate(images):
+#            result[i, :] = self.extract(image, visualize=visualize, feature_vector=feature_vector)
+
+#            counter += 1
+#            if counter % 1000 == 0:
+#                end = datetime.now()
+#                print("{0}/{1}: {2}".format(counter, len(images), end - start))
+#                start = end
+
+#        return result
 
 class HOG(ImageDescriptor):
     def __init__(self, bins = 9, pixels_per_cell = (8, 8), cells_per_block = (1, 1)):
@@ -32,7 +47,7 @@ class HOG(ImageDescriptor):
             cells_per_block=self.cells_per_block, visualise=visualize)
 
 class CSS(ImageDescriptor):
-    def __init__(self, bins=10, pixels_per_cell=(8, 8)):
+    def __init__(self, bins=9, pixels_per_cell=(8, 8)):
         self.bins = bins
         self.pixels_per_cell = pixels_per_cell
 
@@ -45,26 +60,27 @@ class CSS(ImageDescriptor):
         n_cellsy = int(np.floor(sy // cy))
 
         cells = np.zeros((n_cellsy, n_cellsx, self.bins ** d))
+        step = 1.0 / self.bins
+        bins = np.minimum((image / step).astype(int), self.bins - 1)
+        result = bins[:, :, 0] * self.bins * self.bins + bins[:, :, 1] * self.bins + bins[:, :, 2]
         for y in range(n_cellsy):
             for x in range(n_cellsx):
-                cells[y, x, :] = self._hist(image[y*cy:(y+1)*cy, x*cx:(x+1)*cx, :])
+                fx, tx, fy, ty = x*cx, (x+1)*cx, y*cy, (y+1)*cy
+                cells[y, x, :] = np.bincount(result[fy:ty, fx:tx].ravel(), minlength=self.bins * self.bins * self.bins)
 
         n_cells = n_cellsy * n_cellsx
         pairs = np.zeros((n_cells, n_cells))
+        cells = cells.reshape((n_cells, self.bins * self.bins * self.bins))
+        
         for i in range(n_cells):
-            for j in range(n_cells):
-                i_y = int(i / n_cellsx)
-                i_x = i % n_cellsx
-                j_y = int(j / n_cellsx)
-                j_x = j % n_cellsx
+            pairs[i, :] = np.minimum(cells[i, :], cells[:, :]).sum(axis=1)
+        np.fill_diagonal(pairs, 0)
 
-                if i == j:
-                    pairs[i, j] = 0
-                else:
-    #                pairs[i, j] = np.linalg.norm(cells[i_y, i_x, :] - cells[j_y, j_x, :])
-                    pairs[i, j] = np.minimum(cells[i_y, i_x, :], cells[j_y, j_x, :]).sum()
-
-        normalized = pairs / pairs.max()
+        m = pairs.max()
+        if m > 0:
+            normalized = pairs / m
+        else:
+            normalized = pairs
         
         if hasattr(visualize, "__len__"):
             indices = visualize
@@ -76,38 +92,12 @@ class CSS(ImageDescriptor):
         if len(indices) > 0:
             result = []
             for i in indices:
-    #            result_image = np.zeros((n_cellsy * cy, n_cellsx * cx))
-    #            for k in range(n_cells):
-    #                k_y = int(k / n_cellsx)
-    #                k_x = k % n_cellsx
-    #                for l1 in range(cy):
-    #                    for l2 in range(cx):
-    #                        result_image[k_y * cy + l1, k_x * cx + l2] = normalized[i, k]
                 result_image = normalized[i, :].reshape((n_cellsy, n_cellsx))
                 result.append(result_image)
-            print(result[0].shape)
             return result
+        else:
+            return np.ravel(pairs)
 
-    def _hist2(self, cell):
-        d = cell.shape[2]
-        histograms = []
-        for i in range(d):
-            histograms.append(histogram(cell[:, :, i], self.bins)[0])
-        return np.hstack(histograms)
-
-    def _hist(self, cell):
-        sy, sx, d = cell.shape
-        step = 1.0 / self.bins
-
-        result = np.zeros((self.bins * self.bins * self.bins))
-        for y in range(sy):
-            for x in range(sx):
-                bin_1 = min(int(cell[y, x, 0] / step), self.bins - 1)
-                bin_2 = min(int(cell[y, x, 1] / step), self.bins - 1)
-                bin_3 = min(int(cell[y, x, 2] / step), self.bins - 1)
-                result[bin_1 * self.bins * self.bins + bin_2 * self.bins + bin_3] += 1
-
-        return result
 
 class HOGCSS(ImageDescriptor):
     def __init__(self, bins = 9, pixels_per_cell = (8, 8), cells_per_block = (1, 1)):
