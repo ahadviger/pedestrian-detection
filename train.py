@@ -19,16 +19,16 @@ from descriptor import *
 descriptor = HOG()
 model = Model(descriptor)
 #model.prepare_initial()
-model.load('hog_initial')
-model.prepare_hard_negative('hard_negative_3_')
+model.load('hog_step3')
+model.prepare_hard_negative('hard_negative_6_')
 
-if False:
+if True:
     print "Loading training and test set..."
     images_train, labels_train = load(WINDOW_TRAIN_POS, WINDOW_TRAIN_NEG)
     images_test, labels_test = load(WINDOW_TEST_POS, WINDOW_TEST_NEG)
 
     model.train(images_train, labels_train, images_test, labels_test)
-    model.save('hog_initial')
+    model.save('hog_step4')
 
 if False:
     train_pos_dir, train_neg_dir = "train/pos", "train/neg"

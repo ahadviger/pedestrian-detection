@@ -1,6 +1,4 @@
 *.pyc
 *.swo
 *.swp
-train
-test
-
+data

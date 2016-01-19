@@ -20,7 +20,7 @@ from prepare_dataset import *
 
 class Model(object):
     def __init__(self, descriptor, max_layer=-1, downscale=1.1,
-            window_size=(64, 128), step_size=32, threshold=0.3):
+            window_size=(64, 128), step_size=12, threshold=0.3):
         self.descriptor = descriptor
         self.max_layer = max_layer
         self.downscale = downscale
@@ -28,23 +28,39 @@ class Model(object):
         self.step_size = step_size
         self.threshold = threshold
 
-    def sliding_windows(self, image):
-        for y in xrange(0, image.shape[0], self.step_size):
-            for x in xrange(0, image.shape[1], self.step_size):
-                window = image[y:y + self.window_size[1], x:x + self.window_size[0]]
-                if np.shape(window) == (self.window_size[1], self.window_size[0], 3):
-                    yield ((x, y), window)
+    def sliding_windows(self, width, height):
+        for y in xrange(0, height - self.window_size[1] + 1, self.step_size):
+            for x in xrange(0, width - self.window_size[0] + 1, self.step_size):
+                yield (x, x + self.window_size[0], y, y + self.window_size[1])
 
-    def scaled_sliding_windows(self, image):
-        pyramid = pyramid_gaussian(image, max_layer=self.max_layer, downscale=self.downscale)
-        for layer in pyramid:
-            scale = float(np.shape(image)[0]) / np.shape(layer)[0]
-            windows = self.sliding_windows(layer)
-            for (x, y), window in windows:
-                yield (window, [x * scale, y * scale, (x + self.window_size[0]) * scale, (y + self.window_size[1]) * scale])
+    def pyramid(self, image, min_size=(64, 128), downscale=1.1):
+        scale = downscale
+        print(np.shape(image))
+        height, width, _ = np.shape(image)
+        current_height, current_width = height, width
 
-    def descriptor_sliding_windows(self, image):
-        windows = list(self.scaled_sliding_windows(image))
+        while current_height > min_size[1] and current_width > min_size[0]:
+            current_height = int(height / scale)
+            current_width = int(width / scale)
+            scale = scale * downscale
+            yield (current_width, current_height, scale)
+
+    def scaled_sliding_windows(self, image, dimensions):
+        counter = 0
+        im = Image.fromarray(image)
+
+        for (width, height, scale) in self.pyramid(image, downscale=self.downscale):
+            scale_ = float(dimensions[0]) / height
+            windows = self.sliding_windows(width, height)
+            resized = im.resize((width, height), Image.ANTIALIAS)
+            for (x1, x2, y1, y2) in windows:
+                counter += 1
+                cropped = resized.crop((x1, y1, x2, y2))
+#                cropped.save('data/tmp/' + str(counter) + 'a.jpg', format='JPEG', subsampling=0, quality=100)               
+                yield (np.array(cropped), [int(x1 * scale_), int(y1 * scale_), int(x2 * scale_), int(y2 * scale_)])
+
+    def descriptor_sliding_windows(self, image, dimensions):
+        windows = list(self.scaled_sliding_windows(image, dimensions))
         all_features = self.descriptor.extract_all([window for window, position in windows])
 
         for (window, position), features in zip(windows, all_features):
@@ -61,7 +77,7 @@ class Model(object):
 
         area = (x2 - x1 + 1) * (y2 - y1 + 1)
         area = area.astype(float)
-        idxs = np.argsort(y2)
+        idxs = np.argsort(area)
 
         result = []
 
@@ -85,6 +101,7 @@ class Model(object):
         return annotations[result]
 
     def detect(self, image):
+        dimensions = np.shape(image)
         im = Image.fromarray(image)
         new_width = min(400, image.shape[1])
         new_height = new_width * image.shape[0] / image.shape[1]
@@ -93,7 +110,7 @@ class Model(object):
 
         start = datetime.now()
 
-        data = list(self.descriptor_sliding_windows(image))
+        data = list(self.descriptor_sliding_windows(image, dimensions))
         end = datetime.now()
 
         print "Feature extraction time: " + str(end - start)
@@ -105,6 +122,8 @@ class Model(object):
         predictions = self.model.predict(all_features)
         for (position, window, features), prediction in zip(data, predictions):
             if prediction == 1:
+#                plt.imshow(window)
+#                plt.show()
                 detected.append(position)
 
         end = datetime.now()
@@ -142,7 +161,7 @@ class Model(object):
             images = load_inria(inria_path)
             for i, (name, image) in enumerate(images):
                 print "Processing [{0}/{1}]: {2}".format(i, len(images), name)
-                data = list(self.descriptor_sliding_windows(image))
+                data = list(self.descriptor_sliding_windows(image, np.shape(image)))
                 all_features = [features for position, window, features in data]
                 predictions = self.model.predict(all_features)
 

@@ -22,6 +22,7 @@ def annotate(image, annotations):
     draw = ImageDraw.Draw(pil)
 
     for [x1, y1, x2, y2] in annotations:
+        print([x1, y1, x2, y2])
         draw.rectangle([(x1, y1), (x2, y2)])
 
     return np.asarray(pil)
@@ -55,7 +56,7 @@ def process(model, path, pair):
 print "Loading model..."
 descriptor = HOG()
 model = Model(descriptor)
-model.load('hog4')
+model.load('hog_step2')
 
 print "Loading dataset..."
 images_train, annotations_train = load_full(FULL_TRAIN_IMAGES, FULL_TRAIN_ANNOTATIONS)
