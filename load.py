@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import re
+import gc
 
 from os import listdir
 from os.path import join, splitext, exists
@@ -11,19 +12,29 @@ def is_image(filename):
     return any([filename.endswith(e) for e in ext])
 
 def load(pos_dir, neg_dir):
+    gc.disable()
     images, labels = [], []
     files = listdir(pos_dir)
-    for f in files:
+    for i, f in enumerate(files):
         if not is_image(f):
             continue
+#        if "hard_negative" in f:
+#            continue
+        if i > 0 and i % 1000 == 0:
+            print "loaded {0}/{1} positive".format(i, len(files))
         images.append(data.imread(join(pos_dir, f))[:, :, :3])
         labels.append(1)
     files = listdir(neg_dir)
-    for f in files:
+    for i, f in enumerate(files):
         if not is_image(f):
             continue
+#        if "hard_negative" in f:
+#           continue
+        if i > 0 and i % 1000 == 0:
+            print "loaded {0}/{1} negative".format(i, len(files))
         images.append(data.imread(join(neg_dir, f))[:, :, :3])
         labels.append(0)
+    gc.enable()
     return images, labels
 
 def load_inria(image_dir):

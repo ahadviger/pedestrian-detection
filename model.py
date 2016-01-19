@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 from constants import *
 
+from random import shuffle
 import scipy
 from os import makedirs
 from os.path import join, splitext, exists, basename
@@ -11,14 +12,15 @@ from load import *
 from skimage import data, io, color
 from skimage.transform import pyramid_gaussian, pyramid_expand
 
-from sklearn.svm import SVC
+from sklearn.svm import SVC, LinearSVC
+from sklearn.metrics import confusion_matrix
 from datetime import datetime
 from PIL import Image, ImageDraw
 from prepare_dataset import *
 
 class Model(object):
-    def __init__(self, descriptor, max_layer=6, downscale=1.1,
-            window_size=(64, 128), step_size=16, threshold=0.65):
+    def __init__(self, descriptor, max_layer=-1, downscale=1.1,
+            window_size=(64, 128), step_size=32, threshold=0.3):
         self.descriptor = descriptor
         self.max_layer = max_layer
         self.downscale = downscale
@@ -58,6 +60,7 @@ class Model(object):
         y2 = annotations[:, 3]
 
         area = (x2 - x1 + 1) * (y2 - y1 + 1)
+        area = area.astype(float)
         idxs = np.argsort(y2)
 
         result = []
@@ -74,7 +77,7 @@ class Model(object):
 
             w = np.maximum(0, xx2 - xx1 + 1)
             h = np.maximum(0, yy2 - yy1 + 1)
-            overlap = w * h / area[idxs[:last]].astype(float)
+            overlap = w * h / np.minimum(area[i], area[idxs[:last]])
 
             idxs = np.delete(idxs,
                 np.concatenate(([last], np.where(overlap > self.threshold)[0])))
@@ -117,12 +120,20 @@ class Model(object):
         end = datetime.now()
         print "Feature extraction time: " + str(end - start)
     
+        start = datetime.now()
         print "Training SVM..."
-        self.model = SVC()
+        self.model = LinearSVC()
         self.model.fit(descriptor_train, labels_train)
+        end = datetime.now()
+        print "SVM training time: " + str(end - start)
 
+        start = datetime.now()
         print "Train score:", self.model.score(descriptor_train, labels_train)
+        print confusion_matrix(labels_train, self.model.predict(descriptor_train))
         print "Test score:", self.model.score(descriptor_test, labels_test)
+        print confusion_matrix(labels_test, self.model.predict(descriptor_test))
+        end = datetime.now()
+        print "SVM evaluation time: " + str(end - start)
 
     def prepare_hard_negative(self, prefix):
         print "Searching for hard negative..."
@@ -135,10 +146,15 @@ class Model(object):
                 all_features = [features for position, window, features in data]
                 predictions = self.model.predict(all_features)
 
-                counter = 0
+                hard = []
                 for (position, window, features), prediction in zip(data, predictions):
                     if prediction == 1:
-                        new_file_name = WINDOW_TRAIN_NEG + '/' + prefix + splitext(name)[0] + '_' + str(counter) + '.jpg'
+                        hard.append(window)
+                shuffle(hard)
+                counter = 0
+                for window in hard:
+                    if counter < 3:
+                        new_file_name = window_path + '/' + prefix + splitext(name)[0] + '_' + str(counter) + '.jpg'
                         scipy.misc.imsave(new_file_name, window)
                         print(new_file_name)
                         counter += 1

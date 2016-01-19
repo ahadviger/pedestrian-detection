@@ -55,7 +55,7 @@ def process(model, path, pair):
 print "Loading model..."
 descriptor = HOG()
 model = Model(descriptor)
-model.load('hog')
+model.load('hog4')
 
 print "Loading dataset..."
 images_train, annotations_train = load_full(FULL_TRAIN_IMAGES, FULL_TRAIN_ANNOTATIONS)

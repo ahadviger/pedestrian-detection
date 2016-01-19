@@ -8,7 +8,9 @@ from scipy.spatial.distance import cdist
 from datetime import datetime
 from joblib import Parallel, delayed
 
-def helper(descriptor, image, visualize, feature_vector):
+def helper(descriptor, i, n, image, visualize, feature_vector):
+    if i > 0 and i % 1000 == 0:
+        print "Descriptor progress {0}/{1}".format(i, n)
     return descriptor.extract(image, visualize, feature_vector)
 
 class ImageDescriptor(object):
@@ -19,7 +21,7 @@ class ImageDescriptor(object):
         raise NotImplementedError("Not implemented")
 
     def extract_all(self, images, visualize=False, feature_vector=True):
-        return Parallel(n_jobs=4)(delayed(helper)(self, image, visualize, feature_vector) for image in images)
+        return Parallel(n_jobs=4)(delayed(helper)(self, i, len(images), image, visualize, feature_vector) for i, image in enumerate(images))
 #        result = np.empty((len(images), self.feature_vector_size(images[0])))
 
 #        counter = 0
@@ -80,8 +82,12 @@ class CSS(ImageDescriptor):
         if m > 0:
             normalized = pairs / m
         else:
+            print "shit" + str(pairs.min())
             normalized = pairs
         
+        if np.count_nonzero(np.isnan(normalized)):
+            print np.count_nonzero(np.isnan(normalized))
+
         if hasattr(visualize, "__len__"):
             indices = visualize
         elif visualize:
@@ -96,7 +102,7 @@ class CSS(ImageDescriptor):
                 result.append(result_image)
             return result
         else:
-            return np.ravel(pairs)
+            return np.ravel(normalized)
 
 
 class HOGCSS(ImageDescriptor):
