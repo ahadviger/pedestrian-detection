@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.linalg import norm
 
 from skimage import data, io, color
 from skimage.exposure import histogram
@@ -63,7 +64,7 @@ class CSS(ImageDescriptor):
 
         cells = np.zeros((n_cellsy, n_cellsx, self.bins ** d))
         step = 1.0 / self.bins
-        bins = np.minimum((image / step).astype(int), self.bins - 1)
+        bins = np.minimum(np.round(image / step).astype(int), self.bins - 1)
         result = bins[:, :, 0] * self.bins * self.bins + bins[:, :, 1] * self.bins + bins[:, :, 2]
         for y in range(n_cellsy):
             for x in range(n_cellsx):
@@ -71,39 +72,34 @@ class CSS(ImageDescriptor):
                 cells[y, x, :] = np.bincount(result[fy:ty, fx:tx].ravel(), minlength=self.bins * self.bins * self.bins)
 
         n_cells = n_cellsy * n_cellsx
-        pairs = np.zeros((n_cells, n_cells))
         cells = cells.reshape((n_cells, self.bins * self.bins * self.bins))
-        
-        for i in range(n_cells):
-            pairs[i, :] = np.minimum(cells[i, :], cells[:, :]).sum(axis=1)
-        np.fill_diagonal(pairs, 0)
 
-        m = pairs.max()
-        if m > 0:
-            normalized = pairs / m
-        else:
-            print "shit" + str(pairs.min())
-            normalized = pairs
-        
-        if np.count_nonzero(np.isnan(normalized)):
-            print np.count_nonzero(np.isnan(normalized))
+        if not visualize:
+            result = np.zeros(n_cells * (n_cells - 1) / 2)
+            counter = 0
+            for i in range(n_cells - 1):
+                size = n_cells - 1 - i
+                result[counter:counter+size] = np.minimum(cells[i, :], cells[i+1:, :]).sum(axis=1)
+                counter += size
+            return result / norm(result)
+        if visualize:
+            pairs = np.zeros((n_cells, n_cells))
+            for i in range(n_cells):
+                pairs[i, :] = np.minimum(cells[i, :], cells[:, :]).sum(axis=1)
+            np.fill_diagonal(pairs, 0)
 
-        if hasattr(visualize, "__len__"):
-            indices = visualize
-        elif visualize:
-            indices = range(n_cells)
-        else:
-            indices = []
+            normalized = pairs / norm(pairs)
 
-        if len(indices) > 0:
+            if hasattr(visualize, "__len__"):
+                indices = visualize
+            else:
+                indices = range(n_cells)
+
             result = []
             for i in indices:
                 result_image = normalized[i, :].reshape((n_cellsy, n_cellsx))
                 result.append(result_image)
             return result
-        else:
-            return np.ravel(normalized)
-
 
 class HOGCSS(ImageDescriptor):
     def __init__(self, bins = 9, pixels_per_cell = (8, 8), cells_per_block = (1, 1)):

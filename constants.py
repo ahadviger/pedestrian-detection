@@ -13,5 +13,5 @@ FULL_TRAIN_ANNOTATIONS = "data/full/train/annotations"
 FULL_TEST_IMAGES = "data/full/test/pos"
 FULL_TEST_ANNOTATIONS = "data/full/test/annotations"
 
-RESULTS_TRAIN = "data/results/train/"
-RESULTS_TEST = "data/results/test/"
+RESULTS_TRAIN = "data/results_hogcss/train/"
+RESULTS_TEST = "data/results_hogcss/test/"

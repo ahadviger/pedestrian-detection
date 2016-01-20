@@ -22,41 +22,44 @@ def annotate(image, annotations):
     draw = ImageDraw.Draw(pil)
 
     for [x1, y1, x2, y2] in annotations:
-        print([x1, y1, x2, y2])
         draw.rectangle([(x1, y1), (x2, y2)])
 
     return np.asarray(pil)
 
-def process(model, path, pair):
+def process(model, path, pair, i, n):
     start = datetime.now()
 
     (image_name, image), annotations = pair
-    print "Detecting: " + image_name
+    print "[{0}/{1}] Detecting: {2}".format(i, n, image_name)
 
     detected = model.detect(image)
+    minimal = model.non_maximum_suppression(detected)
     end = datetime.now()
 
     print "Detection time: " + str(end - start)
 
     true_annotated = annotate(image, annotations)
-    detected_annotated = annotate(image, detected)
+    all_detected_annotated = annotate(image, detected)
+    detected_annotated = annotate(image, minimal)
 
     true_file_name = splitext(basename(image_name))[0] + '_true' + splitext(image_name)[1]
+    all_detected_file_name = splitext(basename(image_name))[0] + '_all_detected' + splitext(image_name)[1]
     detected_file_name = splitext(basename(image_name))[0] + '_detected' + splitext(image_name)[1]
 
     scipy.misc.imsave(path + '/' + true_file_name, true_annotated)
+    scipy.misc.imsave(path + '/' + all_detected_file_name, all_detected_annotated)
     scipy.misc.imsave(path + '/' + detected_file_name, detected_annotated)
 
     with open(path + '/' + splitext(basename(image_name))[0] + '_annotations.txt', 'w') as f:
         for annotation in annotations:
             f.write("True     {0}, {1} - {2}, {3}\n".format(annotation[0], annotation[1], annotation[2], annotation[3]))
-        for annotation in detected:
+        for annotation in minimal:
             f.write("Detected {0}, {1} - {2}, {3}\n".format(annotation[0], annotation[1], annotation[2], annotation[3]))
 
 print "Loading model..."
-descriptor = HOG()
+descriptor = HOGCSS()
 model = Model(descriptor)
-model.load('hog_step2')
+model.load('hogcss_step1')
 
 print "Loading dataset..."
 images_train, annotations_train = load_full(FULL_TRAIN_IMAGES, FULL_TRAIN_ANNOTATIONS)
@@ -64,5 +67,10 @@ images_test, annotations_test = load_full(FULL_TEST_IMAGES, FULL_TEST_ANNOTATION
 
 data = zip(images_train, annotations_train)
 print "Detecting..."
-for pair in data:
-    process(model, RESULTS_TRAIN, pair)
+for i, pair in enumerate(data):
+    process(model, RESULTS_TRAIN, pair, i, len(data))
+
+data = zip(images_test, annotations_test)
+print "Detecting..."
+for i, pair in enumerate(data):
+    process(model, RESULTS_TEST, pair, i, len(data))

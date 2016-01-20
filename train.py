@@ -16,11 +16,11 @@ from sklearn.metrics import confusion_matrix
 from model import *
 from descriptor import *
 
-descriptor = HOG()
+descriptor = HOGCSS()
 model = Model(descriptor)
 #model.prepare_initial()
-model.load('hog_step3')
-model.prepare_hard_negative('hard_negative_6_')
+model.load('hogcss_initial')
+model.prepare_hard_negative('hogcss_hard_negative_1_')
 
 if True:
     print "Loading training and test set..."
@@ -28,7 +28,7 @@ if True:
     images_test, labels_test = load(WINDOW_TEST_POS, WINDOW_TEST_NEG)
 
     model.train(images_train, labels_train, images_test, labels_test)
-    model.save('hog_step4')
+    model.save('hogcss_step1')
 
 if False:
     train_pos_dir, train_neg_dir = "train/pos", "train/neg"

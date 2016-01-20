@@ -35,7 +35,6 @@ class Model(object):
 
     def pyramid(self, image, min_size=(64, 128), downscale=1.1):
         scale = downscale
-        print(np.shape(image))
         height, width, _ = np.shape(image)
         current_height, current_width = height, width
 
@@ -77,7 +76,7 @@ class Model(object):
 
         area = (x2 - x1 + 1) * (y2 - y1 + 1)
         area = area.astype(float)
-        idxs = np.argsort(area)
+        idxs = np.argsort(y2)
 
         result = []
 
@@ -93,7 +92,7 @@ class Model(object):
 
             w = np.maximum(0, xx2 - xx1 + 1)
             h = np.maximum(0, yy2 - yy1 + 1)
-            overlap = w * h / np.minimum(area[i], area[idxs[:last]])
+            overlap = w * h / area[idxs[:last]]#np.minimum(area[i], area[idxs[:last]])
 
             idxs = np.delete(idxs,
                 np.concatenate(([last], np.where(overlap > self.threshold)[0])))
@@ -129,7 +128,7 @@ class Model(object):
         end = datetime.now()
         print "Feature prediction time: " + str(end - start)
 
-        return self.non_maximum_suppression(np.array(detected))
+        return np.array(detected)
     
     def train(self, images_train, labels_train, images_test, labels_test):
         start = datetime.now()
