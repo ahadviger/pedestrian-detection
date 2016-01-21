@@ -20,28 +20,30 @@ from prepare_dataset import *
 
 class Model(object):
     def __init__(self, descriptor, max_layer=-1, downscale=1.1,
-            window_size=(64, 128), step_size=12, threshold=0.3):
+            window_size=(64, 128), step_size=12, threshold=0.3,
+            min_size=(64, 128)):
         self.descriptor = descriptor
         self.max_layer = max_layer
         self.downscale = downscale
         self.window_size = window_size
         self.step_size = step_size
         self.threshold = threshold
+        self.min_size = min_size
 
     def sliding_windows(self, width, height):
         for y in xrange(0, height - self.window_size[1] + 1, self.step_size):
             for x in xrange(0, width - self.window_size[0] + 1, self.step_size):
                 yield (x, x + self.window_size[0], y, y + self.window_size[1])
 
-    def pyramid(self, image, min_size=(64, 128), downscale=1.1):
-        scale = downscale
+    def pyramid(self, image):
+        scale = self.downscale
         height, width, _ = np.shape(image)
         current_height, current_width = height, width
 
-        while current_height > min_size[1] and current_width > min_size[0]:
+        while current_height > self.min_size[1] and current_width > self.min_size[0]:
             current_height = int(height / scale)
             current_width = int(width / scale)
-            scale = scale * downscale
+            scale = scale * self.downscale
             yield (current_width, current_height, scale)
 
     def scaled_sliding_windows(self, image, dimensions):
@@ -182,7 +184,8 @@ class Model(object):
 
     def prepare_initial(self):
         for dir in [WINDOW_TRAIN_NEG, WINDOW_TEST_NEG, WINDOW_TRAIN_POS, WINDOW_TEST_POS]:
-            makedirs(dir)
+            if not exists(dir):
+                makedirs(dir)
         
         make_dataset(INRIA_TRAIN_NEG, WINDOW_TRAIN_NEG, center='random', sample=10)
         make_dataset(INRIA_TEST_NEG, WINDOW_TEST_NEG, center='random', sample=10)

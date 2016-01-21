@@ -83,11 +83,13 @@ images_test, annotations_test = load_full(FULL_TEST_IMAGES.format(args.input), F
 
 print "Detecting..."
 data = zip(images_train, annotations_train)
-makedirs(RESULTS_TRAIN.format(args.output))
+if not exists(RESULTS_TRAIN.format(args.output)):
+    makedirs(RESULTS_TRAIN.format(args.output))
 for i, pair in enumerate(data):
     process(model, RESULTS_TRAIN.format(args.output), pair, i, len(data))
 
 data = zip(images_test, annotations_test)
-makedirs(RESULTS_TEST.format(args.output))
+if not exists(RESULTS_TEST.format(args.output)):
+    makedirs(RESULTS_TEST.format(args.output))
 for i, pair in enumerate(data):
     process(model, RESULTS_TEST.format(args.output), pair, i, len(data))
