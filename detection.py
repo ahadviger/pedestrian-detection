@@ -1,7 +1,7 @@
 import cPickle
 
-#import matplotlib.pyplot as plt
 import scipy
+import argparse
 
 from load import *
 from skimage import data, io, color
@@ -10,6 +10,7 @@ from skimage.feature import hog
 from sklearn.svm import SVC
 from PIL import Image, ImageDraw
 from os.path import join, splitext, exists, basename
+from os import makedirs
 
 from constants import *
 from model import *
@@ -46,6 +47,7 @@ def process(model, path, pair, i, n):
     all_detected_file_name = splitext(basename(image_name))[0] + '_all_detected' + splitext(image_name)[1]
     detected_file_name = splitext(basename(image_name))[0] + '_detected' + splitext(image_name)[1]
 
+    print "Saving to {}".format(path + '/' + detected_file_name)
     scipy.misc.imsave(path + '/' + true_file_name, true_annotated)
     scipy.misc.imsave(path + '/' + all_detected_file_name, all_detected_annotated)
     scipy.misc.imsave(path + '/' + detected_file_name, detected_annotated)
@@ -56,21 +58,36 @@ def process(model, path, pair, i, n):
         for annotation in minimal:
             f.write("Detected {0}, {1} - {2}, {3}\n".format(annotation[0], annotation[1], annotation[2], annotation[3]))
 
+parser = argparse.ArgumentParser(description='Processes images and detects pedestrians.')
+parser.add_argument('--descriptor', choices=['hog', 'css', 'hogcss'], required=True)
+parser.add_argument('--model', required=True)
+parser.add_argument('--input', required=True)
+parser.add_argument('--output', required=True)
+args = parser.parse_args()
+
 print "Loading model..."
-descriptor = HOGCSS()
+
+if args.descriptor == "hog":
+    descriptor = HOG()
+elif args.descriptor == "css":
+    descriptor = CSS()
+elif args.descriptor == "hogcss":
+    descriptor = HOGCSS()
+
 model = Model(descriptor)
-model.load('hogcss_step1')
+model.load(args.model)
 
 print "Loading dataset..."
-images_train, annotations_train = load_full(FULL_TRAIN_IMAGES, FULL_TRAIN_ANNOTATIONS)
-images_test, annotations_test = load_full(FULL_TEST_IMAGES, FULL_TEST_ANNOTATIONS)
+images_train, annotations_train = load_full(FULL_TRAIN_IMAGES.format(args.input), FULL_TRAIN_ANNOTATIONS.format(args.input))
+images_test, annotations_test = load_full(FULL_TEST_IMAGES.format(args.input), FULL_TEST_ANNOTATIONS.format(args.input))
 
-data = zip(images_train, annotations_train)
 print "Detecting..."
+data = zip(images_train, annotations_train)
+makedirs(RESULTS_TRAIN.format(args.output))
 for i, pair in enumerate(data):
-    process(model, RESULTS_TRAIN, pair, i, len(data))
+    process(model, RESULTS_TRAIN.format(args.output), pair, i, len(data))
 
 data = zip(images_test, annotations_test)
-print "Detecting..."
+makedirs(RESULTS_TEST.format(args.output))
 for i, pair in enumerate(data):
-    process(model, RESULTS_TEST, pair, i, len(data))
+    process(model, RESULTS_TEST.format(args.output), pair, i, len(data))

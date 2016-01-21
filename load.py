@@ -11,15 +11,15 @@ def is_image(filename):
     ext = [".jpg", ".png", ".gif", "bmp"]
     return any([filename.endswith(e) for e in ext])
 
-def load(pos_dir, neg_dir):
+def load(pos_dir, neg_dir, hard_examples=[]):
     gc.disable()
     images, labels = [], []
     files = listdir(pos_dir)
     for i, f in enumerate(files):
         if not is_image(f):
             continue
-#        if "hard_negative" in f:
-#            continue
+        if "hard_example" in f and (hard_examples is None or not any ([f.startswith(prefix) for prefix in hard_examples])):
+            continue
         if i > 0 and i % 1000 == 0:
             print "loaded {0}/{1} positive".format(i, len(files))
         images.append(data.imread(join(pos_dir, f))[:, :, :3])
@@ -28,8 +28,8 @@ def load(pos_dir, neg_dir):
     for i, f in enumerate(files):
         if not is_image(f):
             continue
-#        if "hard_negative" in f:
-#           continue
+        if "hard_example" in f and (hard_examples is None or not any ([f.startswith(prefix) for prefix in hard_examples])):
+            continue
         if i > 0 and i % 1000 == 0:
             print "loaded {0}/{1} negative".format(i, len(files))
         images.append(data.imread(join(neg_dir, f))[:, :, :3])

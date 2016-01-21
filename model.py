@@ -153,8 +153,8 @@ class Model(object):
         end = datetime.now()
         print "SVM evaluation time: " + str(end - start)
 
-    def prepare_hard_negative(self, prefix):
-        print "Searching for hard negative..."
+    def prepare_hard_examples(self, prefix):
+        print "Searching for hard examples..."
 
         def process(inria_path, window_path):
             images = load_inria(inria_path)
@@ -172,7 +172,7 @@ class Model(object):
                 counter = 0
                 for window in hard:
                     if counter < 3:
-                        new_file_name = window_path + '/' + prefix + splitext(name)[0] + '_' + str(counter) + '.jpg'
+                        new_file_name = window_path + '/' + prefix + '_' + splitext(name)[0] + '_' + str(counter) + '.jpg'
                         scipy.misc.imsave(new_file_name, window)
                         print(new_file_name)
                         counter += 1
@@ -183,7 +183,7 @@ class Model(object):
     def prepare_initial(self):
         for dir in [WINDOW_TRAIN_NEG, WINDOW_TEST_NEG, WINDOW_TRAIN_POS, WINDOW_TEST_POS]:
             makedirs(dir)
-    
+        
         make_dataset(INRIA_TRAIN_NEG, WINDOW_TRAIN_NEG, center='random', sample=10)
         make_dataset(INRIA_TEST_NEG, WINDOW_TEST_NEG, center='random', sample=10)
 
