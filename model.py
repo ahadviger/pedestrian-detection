@@ -50,7 +50,7 @@ class Model(object):
         counter = 0
         im = Image.fromarray(image)
 
-        for (width, height, scale) in self.pyramid(image, downscale=self.downscale):
+        for (width, height, scale) in self.pyramid(image):
             scale_ = float(dimensions[0]) / height
             windows = self.sliding_windows(width, height)
             resized = im.resize((width, height), Image.ANTIALIAS)
